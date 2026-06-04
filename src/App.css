@@ -1,12 +1,15 @@
 * {
   box-sizing: border-box;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
   margin: 0;
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   background: #f1f5f9;
+  overflow: hidden;
+  touch-action: pan-x pan-y;
 }
 
 .app {
@@ -24,17 +27,20 @@ body {
   gap: 12px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.05);
   z-index: 10;
+  flex-wrap: wrap;
 }
 
 button {
   background: #3b82f6;
   border: none;
   color: white;
-  padding: 6px 14px;
+  padding: 8px 16px;
   border-radius: 20px;
   font-weight: 500;
   cursor: pointer;
   transition: 0.2s;
+  font-size: 14px;
+  min-height: 44px;
 }
 
 button:hover {
@@ -58,6 +64,7 @@ button.disabled:hover {
   background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
   background-size: 24px 24px;
   overflow: hidden;
+  touch-action: none;
 }
 
 .table-number {
@@ -87,8 +94,8 @@ button.disabled:hover {
 .table-timer {
   background: #f8fafc;
   border-radius: 24px;
-  padding: 4px 10px;
-  font-size: 13px;
+  padding: 6px 12px;
+  font-size: 14px;
   font-weight: bold;
   box-shadow: inset 0 0 0 1px #e2e8f0;
   cursor: pointer;
@@ -96,6 +103,9 @@ button.disabled:hover {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-height: 44px;
+  min-width: 70px;
+  justify-content: center;
 }
 
 .table-timer:hover {
@@ -115,6 +125,7 @@ button.disabled:hover {
   letter-spacing: 0.5px;
 }
 
+/* Десктопная версия сайдбара (справа) */
 .sidebar {
   position: fixed;
   right: 0;
@@ -129,6 +140,206 @@ button.disabled:hover {
   gap: 24px;
   z-index: 20;
   overflow-y: auto;
+  transform: translateX(0);
+  transition: transform 0.3s ease;
+}
+
+/* Мобильная версия сайдбара (снизу) */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    right: auto;
+    bottom: 0;
+    left: 0;
+    top: auto;
+    width: 100%;
+    height: 40%;
+    max-height: 60%;
+    min-height: 200px;
+    background: white;
+    box-shadow: 0 -4px 20px rgba(0,0,0,0.15);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 20;
+    overflow-y: auto;
+    border-radius: 20px 20px 0 0;
+    transition: transform 0.3s ease;
+  }
+  
+  /* Анимация появления */
+  .sidebar {
+    animation: slideUp 0.3s ease;
+  }
+  
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+  
+  /* Заголовок сайдбара на мобильных */
+  .sidebar-header {
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 21;
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+    border-bottom: 2px solid #e2e8f0;
+  }
+  
+  .sidebar-header h3 {
+    font-size: 18px;
+  }
+  
+  .close-sidebar {
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
+  }
+  
+  /* Полоса прокрутки для мобильного сайдбара */
+  .sidebar::-webkit-scrollbar {
+    width: 3px;
+  }
+  
+  .sidebar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+  }
+  
+  .sidebar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+  
+  /* Увеличиваем отступы для тач-скрина */
+  .timer-card {
+    padding: 14px;
+    margin-bottom: 4px;
+  }
+  
+  .timer-controls button {
+    min-width: 48px;
+    min-height: 48px;
+    font-size: 18px;
+  }
+  
+  /* Кнопки в тулбаре на мобильных */
+  .toolbar button {
+    flex: 1;
+    font-size: 13px;
+    padding: 10px 12px;
+  }
+  
+  /* Размеры таймеров на столе для мобильных */
+  .table-timer {
+    padding: 5px 10px;
+    font-size: 12px;
+    min-width: 60px;
+    min-height: 38px;
+  }
+  
+  .table-number {
+    font-size: 11px;
+  }
+  
+  /* Модальное окно на мобильных */
+  .modal-content {
+    padding: 20px;
+    min-width: 250px;
+  }
+  
+  .modal-content label {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .modal-content input,
+  .modal-content select {
+    padding: 10px;
+    font-size: 16px;
+  }
+}
+
+/* Для очень маленьких экранов (до 480px) */
+@media (max-width: 480px) {
+  .sidebar {
+    height: 45%;
+    min-height: 250px;
+    padding: 12px;
+  }
+  
+  .timer-time {
+    font-size: 16px;
+  }
+  
+  .timer-status {
+    font-size: 10px;
+  }
+  
+  .timer-card {
+    padding: 10px;
+  }
+  
+  .timer-controls button {
+    min-width: 40px;
+    min-height: 40px;
+    font-size: 16px;
+    padding: 4px 8px;
+  }
+  
+  .sidebar-header h3 {
+    font-size: 16px;
+  }
+  
+  .close-sidebar {
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+  }
+  
+  .toolbar {
+    padding: 10px 16px;
+    gap: 8px;
+  }
+  
+  .toolbar button {
+    font-size: 12px;
+    padding: 8px 10px;
+    min-height: 40px;
+  }
+}
+
+/* Для планшетов (горизонтальная ориентация) */
+@media (min-width: 769px) and (max-width: 1024px) and (orientation: landscape) {
+  .sidebar {
+    width: 350px;
+  }
+}
+
+/* Индикатор, что сайдбар можно потянуть вниз (для мобильных) */
+@media (max-width: 768px) {
+  .sidebar::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    background: #cbd5e1;
+    border-radius: 2px;
+  }
+  
+  .sidebar {
+    padding-top: 0px;
+  }
 }
 
 .sidebar-header {
@@ -144,17 +355,18 @@ button.disabled:hover {
   margin: 0;
   padding-bottom: 0;
   border-bottom: none;
+  font-size: 20px;
 }
 
 .close-sidebar {
   background: none;
   border: none;
-  font-size: 24px;
+  font-size: 28px;
   cursor: pointer;
   color: #64748b;
   padding: 0;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -170,12 +382,6 @@ button.disabled:hover {
 
 .close-sidebar:active {
   transform: scale(0.95);
-}
-
-.sidebar h3 {
-  margin: 0;
-  padding-bottom: 8px;
-  border-bottom: 2px solid #e2e8f0;
 }
 
 .timers-list {
@@ -195,6 +401,7 @@ button.disabled:hover {
   border: 2px solid #e2e8f0;
   cursor: pointer;
   transition: all 0.2s ease;
+  min-height: 70px;
 }
 
 .timer-card:hover {
@@ -234,9 +441,10 @@ button.disabled:hover {
 .timer-controls button {
   background: #e2e8f0;
   color: #1e293b;
-  padding: 4px 8px;
-  font-size: 14px;
-  min-width: 32px;
+  padding: 6px 10px;
+  font-size: 16px;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .timer-controls button:hover {
@@ -261,13 +469,15 @@ button.disabled:hover {
   align-items: center;
   justify-content: center;
   z-index: 100;
+  padding: 20px;
 }
 
 .modal-content {
   background: white;
   padding: 24px;
   border-radius: 24px;
-  min-width: 300px;
+  min-width: 280px;
+  max-width: 90%;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -278,6 +488,15 @@ button.disabled:hover {
   display: flex;
   justify-content: space-between;
   gap: 16px;
+  flex-wrap: wrap;
+}
+
+.modal-content input,
+.modal-content select {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  font-size: 14px;
 }
 
 .workspace > div {
