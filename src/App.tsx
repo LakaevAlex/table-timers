@@ -179,6 +179,8 @@ const TableItem: React.FC<{
   const borderColor = getBorderColor(currentTimers);
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0, tableX: 0, tableY: 0 });
+  const touchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTapRef = useRef(0);
 
   useEffect(() => {
     setCurrentTimers(table.timers);
@@ -204,6 +206,7 @@ const TableItem: React.FC<{
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.table-timer')) return;
+    if (!table.isDraggable) return;
     e.stopPropagation();
     e.preventDefault();
     
@@ -218,6 +221,7 @@ const TableItem: React.FC<{
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if ((e.target as HTMLElement).closest('.table-timer')) return;
+    if (!table.isDraggable) return;
     e.stopPropagation();
     
     const touch = e.touches[0];
@@ -228,6 +232,27 @@ const TableItem: React.FC<{
       tableX: table.x,
       tableY: table.y,
     };
+    
+    // Очищаем таймаут для двойного тапа
+    if (touchTimeoutRef.current) {
+      clearTimeout(touchTimeoutRef.current);
+      touchTimeoutRef.current = null;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!isDragging) {
+      // Обработка двойного тапа для блокировки/разблокировки
+      const now = Date.now();
+      const lastTap = lastTapRef.current;
+      lastTapRef.current = now;
+      
+      if (now - lastTap < 300) {
+        // Двойной тап
+        e.stopPropagation();
+        onToggleDraggable(table.id);
+      }
+    }
   };
 
   useEffect(() => {
@@ -254,6 +279,8 @@ const TableItem: React.FC<{
 
     const handleEnd = () => {
       setIsDragging(false);
+      // Сбрасываем lastTap при завершении перетаскивания
+      lastTapRef.current = 0;
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -276,11 +303,6 @@ const TableItem: React.FC<{
     onToggleDraggable(table.id);
   };
 
-  const handleTouchDouble = (e: React.TouchEvent) => {
-    e.stopPropagation();
-    onToggleDraggable(table.id);
-  };
-
   const style: React.CSSProperties = {
     position: 'absolute',
     left: table.x,
@@ -291,7 +313,7 @@ const TableItem: React.FC<{
     backgroundColor: 'white',
     border: `3px solid ${borderColor === 'blue' ? '#3b82f6' : borderColor === 'yellow' ? '#eab308' : borderColor === 'red' ? '#ef4444' : '#22c55e'}`,
     boxShadow: isSelected ? '0 0 0 4px rgba(59,130,246,0.5)' : '0 2px 8px rgba(0,0,0,0.1)',
-    cursor: isDragging ? 'grabbing' : 'grab',
+    cursor: table.isDraggable ? (isDragging ? 'grabbing' : 'grab') : 'default',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -306,8 +328,8 @@ const TableItem: React.FC<{
       style={style} 
       onMouseDown={handleMouseDown}
       onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       onDoubleClick={handleDoubleClick}
-      onTouchEnd={handleTouchDouble}
       onClick={(e) => {
         if (!isDragging) {
           e.stopPropagation();
@@ -465,14 +487,14 @@ const Workspace: React.FC<{
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     const newScale = Math.min(Math.max(0.3, viewState.scale + delta), 3);
-
+    
     const rect = workspaceRef.current?.getBoundingClientRect();
     if (rect) {
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
       const newX = mouseX - (mouseX - viewState.x) * (newScale / viewState.scale);
       const newY = mouseY - (mouseY - viewState.y) * (newScale / viewState.scale);
-
+      
       const newViewState = { x: newX, y: newY, scale: newScale };
       setViewState(newViewState);
       onViewStateChange(newViewState);
@@ -481,7 +503,6 @@ const Workspace: React.FC<{
 
   // Обработчики для панорамирования мышью
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Панорамирование только если клик на пустом месте (не на столе)
     if (e.target === workspaceRef.current || (e.target as HTMLElement).classList.contains('workspace-content')) {
       setIsPanning(true);
       panStartRef.current = {
@@ -529,7 +550,6 @@ const Workspace: React.FC<{
       setInitialTouchDistance(distance);
       setInitialScale(viewState.scale);
     } else if (e.touches.length === 1) {
-      // Проверяем, что тап был на пустом месте
       const target = e.target as HTMLElement;
       if (target === workspaceRef.current || target.classList.contains('workspace-content')) {
         setIsPanning(true);
