@@ -29,7 +29,7 @@ interface Table {
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-// Форматирование времени в формат MM:SS с ведущими нулями
+// Форматирование времени в формат MM:SS
 const formatTime = (totalSeconds: number): string => {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -45,7 +45,6 @@ const getBorderColor = (timers: Timer[]): BorderColor => {
     }
   }
 
-  // Желтый с 10 секунд, красный с 20 секунд
   if (maxElapsed >= 20) return 'red';
   if (maxElapsed >= 10) return 'yellow';
   if (timers.length > 0 && timers.some(t => t.status === 'running')) return 'blue';
@@ -54,7 +53,7 @@ const getBorderColor = (timers: Timer[]): BorderColor => {
 };
 
 // Функции для работы с localStorage
-const saveToLocalStorage = (tables: Table[]) => {
+const saveToLocalStorage = (tables: Table[], viewState: { x: number; y: number; scale: number }) => {
   try {
     const tablesToSave = tables.map(table => ({
       ...table,
@@ -75,23 +74,24 @@ const saveToLocalStorage = (tables: Table[]) => {
     
     localStorage.setItem('restaurant-tables', JSON.stringify({
       tables: tablesToSave,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      viewState
     }));
   } catch (error) {
     console.error('Error saving to localStorage:', error);
   }
 };
 
-const loadFromLocalStorage = (): Table[] | null => {
+const loadFromLocalStorage = (): { tables: Table[]; viewState: { x: number; y: number; scale: number } } | null => {
   try {
     const saved = localStorage.getItem('restaurant-tables');
     if (saved) {
-      const { tables: savedTables, timestamp } = JSON.parse(saved);
+      const { tables: savedTables, timestamp, viewState } = JSON.parse(saved);
       const now = Date.now() / 1000;
       const savedTime = timestamp / 1000;
       const timeDiff = now - savedTime;
       
-      return savedTables.map((table: any) => ({
+      const tables = savedTables.map((table: any) => ({
         ...table,
         isDraggable: table.isDraggable !== undefined ? table.isDraggable : true,
         timers: table.timers.map((timer: any) => {
@@ -107,6 +107,8 @@ const loadFromLocalStorage = (): Table[] | null => {
           return timer;
         })
       }));
+      
+      return { tables, viewState: viewState || { x: 0, y: 0, scale: 1 } };
     }
   } catch (error) {
     console.error('Error loading from localStorage:', error);
@@ -153,6 +155,10 @@ const TableTimerDisplay: React.FC<{
         e.stopPropagation(); 
         onSelect();
       }}
+      onTouchEnd={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
     >
       <span className="timer-display">{formattedTime}</span>
     </div>
@@ -164,21 +170,20 @@ const TableItem: React.FC<{
   table: Table;
   isSelected: boolean;
   onSelect: () => void;
-  onDrag: (id: string, x: number, y: number) => void;
   onSelectTimer: (tableId: string, timerId: string) => void;
   onToggleDraggable: (id: string) => void;
-}> = ({ table, isSelected, onSelect, onDrag, onSelectTimer, onToggleDraggable }) => {
+  onDrag: (id: string, x: number, y: number) => void;
+  scale: number;
+}> = ({ table, isSelected, onSelect, onSelectTimer, onToggleDraggable, onDrag, scale }) => {
   const [currentTimers, setCurrentTimers] = useState(table.timers);
   const borderColor = getBorderColor(currentTimers);
   const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef({ mouseX: 0, mouseY: 0, tableX: 0, tableY: 0 });
+  const dragStartRef = useRef({ x: 0, y: 0, tableX: 0, tableY: 0 });
 
-  // Обновляем локальное состояние таймеров
   useEffect(() => {
     setCurrentTimers(table.timers);
   }, [table.timers]);
 
-  // Эффект для обновления времени running таймеров
   useEffect(() => {
     const runningTimers = currentTimers.filter(t => t.status === 'running' && t.startTime);
     if (runningTimers.length === 0) return;
@@ -198,46 +203,83 @@ const TableItem: React.FC<{
   }, [currentTimers]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (!table.isDraggable) return;
     if ((e.target as HTMLElement).closest('.table-timer')) return;
     e.stopPropagation();
+    e.preventDefault();
+    
+    setIsDragging(true);
     dragStartRef.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
+      x: e.clientX,
+      y: e.clientY,
       tableX: table.x,
       tableY: table.y,
     };
-    setIsDragging(true);
   };
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if ((e.target as HTMLElement).closest('.table-timer')) return;
     e.stopPropagation();
-    onToggleDraggable(table.id);
+    
+    const touch = e.touches[0];
+    setIsDragging(true);
+    dragStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      tableX: table.x,
+      tableY: table.y,
+    };
   };
 
   useEffect(() => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const deltaX = e.clientX - dragStartRef.current.mouseX;
-      const deltaY = e.clientY - dragStartRef.current.mouseY;
+      e.preventDefault();
+      const deltaX = (e.clientX - dragStartRef.current.x) / scale;
+      const deltaY = (e.clientY - dragStartRef.current.y) / scale;
       const newX = dragStartRef.current.tableX + deltaX;
       const newY = dragStartRef.current.tableY + deltaY;
       onDrag(table.id, newX, newY);
     };
 
-    const handleMouseUp = () => {
+    const handleTouchMove = (e: TouchEvent) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const deltaX = (touch.clientX - dragStartRef.current.x) / scale;
+      const deltaY = (touch.clientY - dragStartRef.current.y) / scale;
+      const newX = dragStartRef.current.tableX + deltaX;
+      const newY = dragStartRef.current.tableY + deltaY;
+      onDrag(table.id, newX, newY);
+    };
+
+    const handleEnd = () => {
       setIsDragging(false);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('mouseup', handleEnd);
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleEnd);
+    document.addEventListener('touchcancel', handleEnd);
 
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleEnd);
+      document.removeEventListener('touchcancel', handleEnd);
     };
-  }, [isDragging, table.id, onDrag]);
+  }, [isDragging, scale, table.id, onDrag]);
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleDraggable(table.id);
+  };
+
+  const handleTouchDouble = (e: React.TouchEvent) => {
+    e.stopPropagation();
+    onToggleDraggable(table.id);
+  };
 
   const style: React.CSSProperties = {
     position: 'absolute',
@@ -249,23 +291,25 @@ const TableItem: React.FC<{
     backgroundColor: 'white',
     border: `3px solid ${borderColor === 'blue' ? '#3b82f6' : borderColor === 'yellow' ? '#eab308' : borderColor === 'red' ? '#ef4444' : '#22c55e'}`,
     boxShadow: isSelected ? '0 0 0 4px rgba(59,130,246,0.5)' : '0 2px 8px rgba(0,0,0,0.1)',
-    cursor: table.isDraggable ? (isDragging ? 'grabbing' : 'grab') : 'default',
+    cursor: isDragging ? 'grabbing' : 'grab',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     transition: 'border-color 0.3s ease',
-    opacity: isDragging ? 0.9 : 1,
     zIndex: isDragging ? 1000 : 'auto',
+    touchAction: 'none',
   };
 
   return (
     <div 
       style={style} 
       onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
       onDoubleClick={handleDoubleClick}
+      onTouchEnd={handleTouchDouble}
       onClick={(e) => {
-        if (!isDragging && !(e.target as HTMLElement).closest('.table-timer')) {
+        if (!isDragging) {
           e.stopPropagation();
           onSelect();
         }
@@ -404,12 +448,188 @@ const SidebarComponent: React.FC<{
   );
 };
 
+// --- Компонент рабочей области с зумом и панорамированием ---
+const Workspace: React.FC<{
+  children: React.ReactNode;
+  onViewStateChange: (viewState: { x: number; y: number; scale: number }) => void;
+}> = ({ children, onViewStateChange }) => {
+  const [viewState, setViewState] = useState({ x: 0, y: 0, scale: 1 });
+  const [isPanning, setIsPanning] = useState(false);
+  const panStartRef = useRef({ x: 0, y: 0, startX: 0, startY: 0 });
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const [initialTouchDistance, setInitialTouchDistance] = useState(0);
+  const [initialScale, setInitialScale] = useState(1);
+
+  // Обработчик зума колесиком мыши
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    const newScale = Math.min(Math.max(0.3, viewState.scale + delta), 3);
+
+    const rect = workspaceRef.current?.getBoundingClientRect();
+    if (rect) {
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const newX = mouseX - (mouseX - viewState.x) * (newScale / viewState.scale);
+      const newY = mouseY - (mouseY - viewState.y) * (newScale / viewState.scale);
+
+      const newViewState = { x: newX, y: newY, scale: newScale };
+      setViewState(newViewState);
+      onViewStateChange(newViewState);
+    }
+  };
+
+  // Обработчики для панорамирования мышью
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Панорамирование только если клик на пустом месте (не на столе)
+    if (e.target === workspaceRef.current || (e.target as HTMLElement).classList.contains('workspace-content')) {
+      setIsPanning(true);
+      panStartRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        startX: viewState.x,
+        startY: viewState.y,
+      };
+      workspaceRef.current?.style.setProperty('cursor', 'grabbing');
+      e.preventDefault();
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isPanning) {
+      const deltaX = e.clientX - panStartRef.current.x;
+      const deltaY = e.clientY - panStartRef.current.y;
+      const newViewState = {
+        ...viewState,
+        x: panStartRef.current.startX + deltaX,
+        y: panStartRef.current.startY + deltaY,
+      };
+      setViewState(newViewState);
+      onViewStateChange(newViewState);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
+    workspaceRef.current?.style.setProperty('cursor', 'grab');
+  };
+
+  // Обработчики для touch-событий (мобильные)
+  const getTouchDistance = (touches: React.TouchList) => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const distance = getTouchDistance(e.touches);
+      setInitialTouchDistance(distance);
+      setInitialScale(viewState.scale);
+    } else if (e.touches.length === 1) {
+      // Проверяем, что тап был на пустом месте
+      const target = e.target as HTMLElement;
+      if (target === workspaceRef.current || target.classList.contains('workspace-content')) {
+        setIsPanning(true);
+        const touch = e.touches[0];
+        panStartRef.current = {
+          x: touch.clientX,
+          y: touch.clientY,
+          startX: viewState.x,
+          startY: viewState.y,
+        };
+      }
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && initialTouchDistance > 0) {
+      e.preventDefault();
+      const newDistance = getTouchDistance(e.touches);
+      const scaleFactor = newDistance / initialTouchDistance;
+      const newScale = Math.min(Math.max(0.3, initialScale * scaleFactor), 3);
+      
+      const rect = workspaceRef.current?.getBoundingClientRect();
+      if (rect) {
+        const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+        const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+        const newX = centerX - (centerX - viewState.x) * (newScale / viewState.scale);
+        const newY = centerY - (centerY - viewState.y) * (newScale / viewState.scale);
+        
+        const newViewState = { x: newX, y: newY, scale: newScale };
+        setViewState(newViewState);
+        onViewStateChange(newViewState);
+      }
+    } else if (e.touches.length === 1 && isPanning) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - panStartRef.current.x;
+      const deltaY = touch.clientY - panStartRef.current.y;
+      const newViewState = {
+        ...viewState,
+        x: panStartRef.current.startX + deltaX,
+        y: panStartRef.current.startY + deltaY,
+      };
+      setViewState(newViewState);
+      onViewStateChange(newViewState);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsPanning(false);
+    setInitialTouchDistance(0);
+  };
+
+  useEffect(() => {
+    const saved = loadFromLocalStorage();
+    if (saved?.viewState) {
+      setViewState(saved.viewState);
+    }
+  }, []);
+
+  return (
+    <div
+      ref={workspaceRef}
+      className="workspace"
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ cursor: 'grab' }}
+    >
+      <div
+        className="workspace-content"
+        style={{
+          transform: `translate(${viewState.x}px, ${viewState.y}px) scale(${viewState.scale})`,
+          transformOrigin: '0 0',
+          width: '100%',
+          height: '100%',
+        }}
+      >
+        {React.Children.map(children, child => {
+          if (React.isValidElement(child)) {
+            return React.cloneElement(child, { scale: viewState.scale } as any);
+          }
+          return child;
+        })}
+      </div>
+    </div>
+  );
+};
+
 // --- Главное приложение ---
 const App: React.FC = () => {
+  const savedData = loadFromLocalStorage();
+  
   const [tables, setTables] = useState<Table[]>(() => {
-    const saved = loadFromLocalStorage();
-    if (saved && saved.length > 0) {
-      return saved;
+    if (savedData?.tables && savedData.tables.length > 0) {
+      return savedData.tables;
     }
     return [
       { 
@@ -439,6 +659,7 @@ const App: React.FC = () => {
     ];
   });
   
+  const [viewState, setViewState] = useState(savedData?.viewState || { x: 0, y: 0, scale: 1 });
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [showAddTableModal, setShowAddTableModal] = useState(false);
   const [newTableShape, setNewTableShape] = useState<TableShape>('rectangle');
@@ -447,8 +668,8 @@ const App: React.FC = () => {
   const selectedTable = tables.find(t => t.id === selectedTableId);
 
   useEffect(() => {
-    saveToLocalStorage(tables);
-  }, [tables]);
+    saveToLocalStorage(tables, viewState);
+  }, [tables, viewState]);
 
   const addTable = () => {
     const maxNumber = Math.max(...tables.map(t => t.number), 0);
@@ -600,19 +821,20 @@ const App: React.FC = () => {
         </button>
       </div>
 
-      <div className="workspace">
+      <Workspace onViewStateChange={setViewState}>
         {tables.map(table => (
           <TableItem
             key={table.id}
             table={table}
             isSelected={selectedTableId === table.id}
             onSelect={() => selectTable(table.id)}
-            onDrag={updateTablePosition}
             onSelectTimer={selectTimer}
             onToggleDraggable={toggleTableDraggable}
+            onDrag={updateTablePosition}
+            scale={viewState.scale}
           />
         ))}
-      </div>
+      </Workspace>
 
       {selectedTable && (
         <SidebarComponent
