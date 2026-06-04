@@ -1,38 +1,294 @@
-.App {
-  text-align: center;
+* {
+  box-sizing: border-box;
+  user-select: none;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  background: #f1f5f9;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.app {
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.toolbar {
+  background: white;
+  padding: 12px 20px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  gap: 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  z-index: 10;
+}
+
+button {
+  background: #3b82f6;
+  border: none;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+button:hover {
+  background: #2563eb;
+}
+
+button.disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+button.disabled:hover {
+  background: #cbd5e1;
+}
+
+.workspace {
+  flex: 1;
+  position: relative;
+  background: #eef2ff;
+  background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+  background-size: 24px 24px;
+  overflow: hidden;
+}
+
+.table-number {
+  font-weight: bold;
+  font-size: 14px;
+  background: rgba(0,0,0,0.05);
+  padding: 2px 8px;
+  border-radius: 20px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.locked-icon {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.timers-container {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.table-timer {
+  background: #f8fafc;
+  border-radius: 24px;
+  padding: 4px 10px;
+  font-size: 13px;
+  font-weight: bold;
+  box-shadow: inset 0 0 0 1px #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.table-timer:hover {
+  background: #e2e8f0;
+  transform: scale(1.05);
+}
+
+.table-timer.selected {
+  background: #3b82f6;
+  color: white;
+  box-shadow: 0 0 0 2px #3b82f6, 0 0 0 4px rgba(59,130,246,0.3);
+}
+
+.timer-display {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.sidebar {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 320px;
+  height: 100%;
+  background: white;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  z-index: 20;
+  overflow-y: auto;
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: 8px;
+}
+
+.sidebar-header h3 {
+  margin: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.close-sidebar {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #64748b;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  border-radius: 8px;
+  transition: all 0.2s ease;
 }
 
-.App-link {
-  color: #61dafb;
+.close-sidebar:hover {
+  background: #f1f5f9;
+  color: #ef4444;
+  transform: scale(1.1);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.close-sidebar:active {
+  transform: scale(0.95);
+}
+
+.sidebar h3 {
+  margin: 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.timers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.timer-card {
+  background: #f8fafc;
+  border-radius: 16px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 2px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.timer-card:hover {
+  transform: translateX(-4px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.timer-card.selected {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.2);
+}
+
+.timer-info {
+  flex: 1;
+}
+
+.timer-time {
+  font-size: 18px;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  color: #1e293b;
+  letter-spacing: 1px;
+}
+
+.timer-status {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.timer-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.timer-controls button {
+  background: #e2e8f0;
+  color: #1e293b;
+  padding: 4px 8px;
+  font-size: 14px;
+  min-width: 32px;
+}
+
+.timer-controls button:hover {
+  background: #cbd5e1;
+}
+
+.no-timers {
+  text-align: center;
+  color: #94a3b8;
+  padding: 20px;
+  font-size: 14px;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 24px;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 20px 35px rgba(0,0,0,0.2);
+}
+
+.modal-content label {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.workspace > div {
+  transition: border-color 0.3s ease, box-shadow 0.2s ease;
+}
+
+@keyframes lockFlash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.table-number .locked-icon {
+  animation: lockFlash 0.3s ease;
 }
