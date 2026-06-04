@@ -1,15 +1,15 @@
 {
   "files": {
-    "main.css": "/table-timers/static/css/main.823d6df5.css",
+    "main.css": "/table-timers/static/css/main.35ecf18b.css",
     "main.js": "/table-timers/static/js/main.3bd29eb1.js",
     "static/js/453.4dd9fef6.chunk.js": "/table-timers/static/js/453.4dd9fef6.chunk.js",
     "index.html": "/table-timers/index.html",
-    "main.823d6df5.css.map": "/table-timers/static/css/main.823d6df5.css.map",
+    "main.35ecf18b.css.map": "/table-timers/static/css/main.35ecf18b.css.map",
     "main.3bd29eb1.js.map": "/table-timers/static/js/main.3bd29eb1.js.map",
     "453.4dd9fef6.chunk.js.map": "/table-timers/static/js/453.4dd9fef6.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.823d6df5.css",
+    "static/css/main.35ecf18b.css",
     "static/js/main.3bd29eb1.js"
   ]
 }
